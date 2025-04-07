@@ -1,7 +1,7 @@
 <template>
   <div class="chatbot-container" :class="{ 'chatbot-visible': visible }" ref="chatbotContainer">
     <div class="chat-header">
-      <h3>AI 助手</h3>
+      <h3>小农</h3>
       <button class="close-btn" @click="closeChat">×</button>
     </div>
     <div class="chat-box" ref="chatBox">
