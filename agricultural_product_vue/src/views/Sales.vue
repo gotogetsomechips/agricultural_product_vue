@@ -236,7 +236,7 @@ export default {
     // 获取销售地列表
     const fetchSalePlaceList = async () => {
       try {
-        const response = await axios.get("http://localhost:8080/saleplace");
+        const response = await axios.get("http://localhost:8080/saleplace/list");
         salePlaceList.value = response.data.data;
       } catch (error) {
         console.error("获取销售地列表失败:", error);
@@ -259,22 +259,34 @@ export default {
     // 添加API请求方法
     const fetchSalesInfo = async () => {
       try {
+        // 构造请求参数，过滤空值
         const params = {
           page: currentPage.value,
           size: pageSize.value,
-          saleInfoId: searchParams.value.id,
-          productName: searchParams.value.productName,
-          salePlace: searchParams.value.salesLocation,
-          saleTime: searchParams.value.date,
         };
+
+        // 动态添加非空查询条件
+        if (searchParams.value.id) params.saleInfoId = Number(searchParams.value.id); // 转换为数字
+        if (searchParams.value.productName) params.productName = searchParams.value.productName;
+        if (searchParams.value.salesLocation) params.salePlace = searchParams.value.salesLocation;
+        if (searchParams.value.date) {
+          // 将日期字符串转换为ISO格式
+          params.saleTime = new Date(searchParams.value.date).toISOString();
+        }
+
         console.log("实际发送的查询参数:", params);
         const response = await axios.post(
-          "http://localhost:8080/saleinfo/page",
-          params
+            "http://localhost:8080/saleinfo/page",
+            params,
+            {
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            }
         );
         console.log("API响应数据:", response.data);
 
-        if (response.data && response.data.code === 1) {
+        if (response.data && response.data.code === 200) {
           salesInfo.value = response.data.data.records.map((item) => ({
             id: item.siId,
             productName: item.pdName,
@@ -300,7 +312,8 @@ export default {
           const response = await axios.delete(
             `http://localhost:8080/saleinfo/${id}`
           );
-          if (response.data.code === 1) {
+          if (response.data.code === 200) {
+            alert('删除成功')
             handleSearch();
           } else {
             alert("删除失败: " + response.data.msg);
@@ -386,21 +399,18 @@ export default {
     const saveInfo = async () => {
       try {
         let response;
-        if (currentAddItem.value.salesLocation) {
-          const selectedPlace = salePlaceList.value.find(
-            (place) => place.spAddress === currentAddItem.value.salesLocation
-          );
+        if (showAddModel.value) {
+          // 新增逻辑
           const backendData = {
-            salePlaceId: selectedPlace?.spId,
-            logisticsId: currentAddItem.value.logisticId,
-            saleTime: currentAddItem.value.saleTime,
-            siDescription: currentAddItem.value.description,
+            salePlaceId: salePlaceList.value.find(
+                place => place.spAddress === currentAddItem.value.salesLocation
+            )?.spId, // 映射到 salePlaceId
+            logisticsId: Number(currentAddItem.value.logisticId), // 确保为数字
+            saleTime: new Date(currentAddItem.value.saleTime).toISOString(), // 转ISO格式
+            siDescription: currentAddItem.value.description
           };
-          console.log("add的内容：", backendData);
-          response = await axios.post(
-            "http://localhost:8080/saleinfo",
-            backendData
-          );
+          console.log("新增请求数据:", backendData);
+          response = await axios.post("http://localhost:8080/saleinfo", backendData);
         } else {
           // 字段映射转换
           const backendData = {
@@ -419,7 +429,8 @@ export default {
           );
         }
         console.log(response);
-        if (response.data.code === 1) {
+        if (response.data.code === 200) {
+          alert('保存成功');
           currentAddItem.value = {
             id: null,
             productName: "",

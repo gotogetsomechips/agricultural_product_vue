@@ -282,7 +282,7 @@ export default {
 
         console.log("API响应数据:", response.data);
 
-        if (response.data.code === 1) {
+        if (response.data.code === 200) {
           const responseData = response.data.data;
 
           if (responseData && responseData.records) {
@@ -332,7 +332,7 @@ export default {
     const fetchProductList = async () => {
       try {
         const response = await axios.get("http://localhost:8080/product/list");
-        if (response.data.code === 1) {
+        if (response.data.code === 200) {
           productList.value = response.data.data || [];
         } else {
           console.error("获取产品列表失败:", response.data.msg);
@@ -356,10 +356,10 @@ export default {
     const fetchProductionPlaces = async () => {
       try {
         console.log("开始获取生产地信息...");
-        const response = await axios.get("http://localhost:8080/productplace");
+        const response = await axios.get("http://localhost:8080/productplace/list");
         console.log("生产地API响应:", response.data);
 
-        if (response.data.code === 1) {
+        if (response.data.code === 200) {
           productionPlaces.value = response.data.data || [];
           console.log("生产地数据:", productionPlaces.value);
         } else {
@@ -574,7 +574,7 @@ export default {
           },
         });
 
-        if (response.data.code === 1) {
+        if (response.data.code === 200) {
           alert(`${isEditMode.value ? "更新" : "添加"}成功`);
           closeDialog();
           await fetchProductionInfo(); // 刷新数据
@@ -657,7 +657,7 @@ export default {
           `http://localhost:8080/productinfo/${id}`
         );
 
-        if (response.data.code === 1) {
+        if (response.data.code === 200) {
           alert("删除成功");
           fetchProductionInfo(); // 刷新数据
         } else {

@@ -168,17 +168,22 @@ export default {
         const params = {
           page: currentPage.value,
           size: pageSize.value,
-          ppId: searchParams.value.id ? Number(searchParams.value.id) : undefined,
-          ppAddress: searchParams.value.address || undefined,
-          ppAdministrator: searchParams.value.administrator || undefined,
+          ppId: searchParams.value.id || "", // 保持为字符串，空字符串而不是undefined
+          ppAddress: searchParams.value.address || "",
+          ppAdministrator: searchParams.value.administrator || "",
         };
 
         const response = await axios.post(
-          "http://localhost:8080/productplace/page",
-          params
+            "http://localhost:8080/productplace/page",
+            params,
+            {
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            }
         );
 
-        if (response.data.code === 1) {
+        if (response.data.code === 200) {
           productionPlaces.value = response.data.data?.records || [];
           totalItems.value = response.data.data?.total || 0;
         } else {
@@ -291,7 +296,7 @@ export default {
           }
         });
 
-        if (response.data.code === 1) {
+        if (response.data.code === 200) {
           alert(`${isEditMode.value ? "更新" : "添加"}成功`);
           closeDialog();
           fetchProductionPlaces(); // 刷新数据
@@ -321,7 +326,7 @@ export default {
           }
         );
 
-        if (response.data.code === 1) {
+        if (response.data.code === 200) {
           alert("删除成功");
           // 如果删除的是当前页的最后一条数据且不是第一页，则返回上一页
           if (productionPlaces.value.length === 1 && currentPage.value > 1) {

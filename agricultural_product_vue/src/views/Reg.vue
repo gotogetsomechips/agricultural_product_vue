@@ -62,7 +62,8 @@ export default {
           username: name.value,
           password: pwd.value
         });
-        if (response.data.code === 1) {
+        console.log("登录响应:", response.data); // 添加这行查看响应结构
+        if (response.data.code === 200) {
           alert("注册成功，请重新登录");
           localStorage.setItem("token", response.data.data); // 保存token
           router.push('/');

@@ -221,20 +221,22 @@ export default {
 
     // 删除操作
     const deleteInfo = async (id) => {
-      const isConfirmed = confirm("您确定要删除这条数据吗？");
-      if (isConfirmed) {
-        try {
-          const response = await axios.delete(
-            `http://localhost:8080/logistics/${id}`
-          );
-          if (response.data.code === 1) {
-            handleSearch();
-          } else {
-            alert("删除失败: " + response.data.msg);
-          }
-        } catch (error) {
-          console.error("删除出错:", error);
+      try {
+
+        const response = await axios.delete(`http://localhost:8080/logistics/${id}`);
+        if (response.data.code === 200) {
+          alert('删除成功');
+          currentPage.value = 1;
+
+          // 重新获取数据
+          await fetchLogisticsInfo();
+
+        } else {
+          alert("删除失败: " + response.data.msg);
         }
+      } catch (error) {
+        console.error("删除出错:", error);
+        alert("删除失败: " + (error.response?.data?.msg || error.message));
       }
     };
 
@@ -265,7 +267,7 @@ export default {
     // 获取物流公司列表
     const fetchCompanyList = async () => {
       try {
-        const response = await axios.get("http://localhost:8080/company");
+        const response = await axios.get("http://localhost:8080/company/list");
         companyList.value = response.data.data;
       } catch (error) {
         console.error("获取物流公司列表失败:", error);
@@ -278,35 +280,44 @@ export default {
         const params = {
           page: currentPage.value,
           size: pageSize.value,
-          logisticsId: searchParams.value.id,
-          productName: searchParams.value.productName,
-          company: searchParams.value.companyName,
-          startLocation: searchParams.value.startLocation,
-          destination: searchParams.value.destination,
-          administrator: searchParams.value.responsiblePerson,
-          startTime: searchParams.value.date,
-        };
-        console.log("实际发送的查询参数:", params);
-        const response = await axios.post(
-          "http://localhost:8080/logistics/page",
-          params
-        );
-        console.log("API响应数据:", response.data);
+          logId: searchParams.value.id ? parseInt(searchParams.value.id) : 0, // 转换为数字，空值时设为0
+          pdName: searchParams.value.productName || "", // 确保不为undefined
+          comName: searchParams.value.companyName || "",
+          startLocation: searchParams.value.startLocation || "",
+          destination: searchParams.value.destination || "",
+          comAdministrator: searchParams.value.responsiblePerson || "",
+          startTime: searchParams.value.date || "", // 确保时间格式正确
 
-        if (response.data && response.data.code === 1) {
-          logisticsInfo.value = response.data.data.records.map((item) => ({
-            id: item.logId,
-            productName: item.pdName,
-            companyName: item.comName,
-            startLocation: item.startLocation,
-            destination: item.destination,
-            status: item.endTime == null ? "未收货" : "已收货",
-            responsiblePerson: item.comAdministrator,
-            startTime: item.startTime,
-            endTime: item.endTime,
-            contact: item.comPhone,
-          }));
-          totalCount.value = response.data.data.total;
+        };
+
+        console.log("修正后的查询参数:", params);
+        const response = await axios.post(
+            "http://localhost:8080/logistics/page",
+            params
+        );
+
+        if (response.data && response.data.code === 200) {
+          if (response.data.data && response.data.data.records) {
+            logisticsInfo.value = response.data.data.records.map((item) => ({
+                id: item.logId,
+                productName: item.pdName,
+                companyName: item.comName,
+                startLocation: item.startLocation,
+                destination: item.destination,
+                status: item.endTime == null ? "未收货" : "已收货",
+                responsiblePerson: item.comAdministrator,
+                startTime: item.startTime,
+                endTime: item.endTime,
+                contact: item.comPhone,
+                productInfoId: item.productInfoId, // 添加这个字段
+                companyId: item.companyId        // 添加这个字段
+            }));
+            totalCount.value = response.data.data.total || 0;
+          } else {
+            logisticsInfo.value = []; // 设置为空数组
+            totalCount.value = 0;
+            console.log("查询成功但没有数据记录");
+          }
         } else {
           console.error("获取物流信息失败:", response.data?.msg);
         }
@@ -392,30 +403,42 @@ export default {
     // 保存物流信息
     const saveInfo = async () => {
       try {
-        const selectedPiId = currentAddItem.value.id; // 获取选中的 piId
+        const formatForBackend = (dateTimeStr) => {
+          if (!dateTimeStr) return null;
+          const date = new Date(dateTimeStr);
+          return date.toISOString(); // 转换为ISO格式
+        };
+        // 准备后端需要的数据，只包含必要字段
         const backendData = {
-          productInfoId: currentAddItem.value.id,
-          companyId: currentAddItem.value.companyName, // 这里companyName实际存的值是comId
+          productInfoId: parseInt(currentAddItem.value.id),
+          companyId: parseInt(currentAddItem.value.companyName),
           startLocation: currentAddItem.value.startLocation,
           destination: currentAddItem.value.destination,
-          startTime: currentAddItem.value.startTime,
-          endTime: currentAddItem.value.endTime,
-          status: currentAddItem.value.status,
-          comAdministrator: currentAddItem.value.responsiblePerson,
-          comPhone: currentAddItem.value.contact,
+          startTime: formatForBackend(currentAddItem.value.startTime),
+          endTime: formatForBackend(currentAddItem.value.endTime),
         };
+
+        console.log("准备发送的数据:", JSON.stringify(backendData, null, 2));
+
         const response = await axios.post(
-          "http://localhost:8080/logistics",
-          backendData
+            "http://localhost:8080/logistics",
+            backendData
         );
-        if (response.data.code === 1) {
+
+        if (response.data.code === 200) {
+          alert('添加成功');
           showAddModel.value = false;
           fetchLogisticsInfo();
         } else {
-          console.error("保存物流信息失败:", response.data.msg);
+          alert("保存失败: " + response.data.msg);
         }
       } catch (error) {
         console.error("保存物流信息出错:", error);
+        if (error.response) {
+          alert(`保存失败 (${error.response.status}): ${error.response.data.msg || '未知错误'}`);
+        } else {
+          alert('保存失败，请检查网络连接或联系管理员');
+        }
       }
     };
 
@@ -428,24 +451,44 @@ export default {
     // 确认收货
     const confirmReceipt = async (id) => {
       try {
-        const item = logisticsInfo.value.find((item) => item.id === id);
-        if (item) {
-          item.status = "已收货";
-          const updatedData = {
-            logId: item.id,
-            ...item, // 保留原有字段
-            endTime: getLocalISOString(), // 设置为当前时间
-          };
-          const response = await axios.put(
+        const isConfirmed = confirm("您确定要确认收货吗？");
+        if (!isConfirmed) return;
+
+        // 从当前表格数据中获取完整信息
+        const item = logisticsInfo.value.find(item => item.id === id);
+        if (!item) {
+          alert("未找到对应的物流信息");
+          return;
+        }
+
+        // 准备更新数据，确保包含所有必要字段
+        const updatedData = {
+          logId: item.id,
+          productInfoId: item.productInfoId, // 需要确保这个字段存在
+          companyId: item.companyId, // 需要确保这个字段存在
+          startLocation: item.startLocation,
+          destination: item.destination,
+          startTime: item.startTime, // 保持原有的开始时间
+          endTime: new Date().toISOString(), // 设置当前时间为到达时间
+          // 如果有其他必要字段，也需要包含
+        };
+
+        console.log("发送的更新数据:", updatedData); // 调试用
+
+        const response = await axios.put(
             "http://localhost:8080/logistics",
             updatedData
-          );
-          if (response.data.code === 1)
-            fetchLogisticsInfo(); // 重新获取数据确保一致性
-          else console.error("确认收货失败:", response.data.msg);
+        );
+
+        if (response.data.code === 200) {
+          alert('确认收货成功');
+          fetchLogisticsInfo(); // 刷新列表
+        } else {
+          alert("确认收货失败: " + response.data.msg);
         }
       } catch (error) {
         console.error("确认收货出错:", error);
+        alert("确认收货出错: " + (error.response?.data?.msg || error.message));
       }
     };
 

@@ -1,6 +1,12 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import {Shop} from "@element-plus/icons-vue";
 
 const routes = [
+  {
+    path: '/shop',
+    name: 'Shop',
+    component: () => import('../views/Shop.vue'),
+  },
   {
     path: '/',
     name: 'Home',

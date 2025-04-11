@@ -201,7 +201,7 @@ export default {
                 );
                 console.log("API响应数据:", response.data);
 
-                if (response.data && response.data.code === 1) {
+                if (response.data && response.data.code === 200) {
                     salePlaceInfo.value = response.data.data.records.map((item) => ({
                         id: item.spId,
                         address: item.spAddress,
@@ -225,7 +225,8 @@ export default {
                     const response = await axios.delete(
                         `http://localhost:8080/saleplace/${id}`
                     );
-                    if (response.data.code === 1) {
+                    if (response.data.code === 200) {
+                        alert('删除成功');
                         handleSearch();
                     } else {
                         alert("删除失败: " + response.data.msg);
@@ -348,13 +349,14 @@ export default {
                     );
                 }
                 console.log(response);
-                if (response.data.code === 1) {
+                if (response.data.code === 200) {
                     currentAddItem.value = {
                         id: null,
                         address: "",
                         administrator: "",
                         phone: "",
                     };
+                    alert('保存成功')
                     showEditModel.value = false;
                     showAddModel.value = false;
                     fetchSalePlace(); // 保存成功后刷新数据

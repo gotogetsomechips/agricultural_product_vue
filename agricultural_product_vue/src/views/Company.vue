@@ -320,7 +320,7 @@
               },
             }
           );
-          if (response.data.code === 1) {
+          if (response.data.code === 200) {
             companyInfo.value = response.data.data.records || [];
             if (response.data.data.length > 0) {
               item.value.comName = response.data.data[0].comName;
@@ -402,12 +402,12 @@
       });
       const showAllCompany = async () => {
         try {
-          const response = await axios.get("http://localhost:8080/company", {
+          const response = await axios.get("http://localhost:8080/company/list", {
             headers: {
               Authorization: token,
             },
           });
-          if (response.data.code === 1) {
+          if (response.data.code === 200) {
             companyInfo.value = response.data.data;
             if (response.data.data.length > 0) {
               item.value.comName = response.data.data[0].comName;
@@ -465,7 +465,7 @@
                   },
                 }
               );
-              if (response.data.code === 1) {
+              if (response.data.code === 200) {
                 //handleSearch();
                 showAllCompany();
                 hideAdd();
@@ -516,7 +516,7 @@
                     },
                   }
                 );
-                if (response.data.code === 1) {
+                if (response.data.code === 200) {
                   showAllCompany();
                   hideEdit();
                   alert("修改成功");
@@ -542,7 +542,7 @@
                 },
               }
             );
-            if (response.data.code === 1) {
+            if (response.data.code === 200) {
               alert("删除成功");
               showAllCompany();
               //handleSearch();

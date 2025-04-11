@@ -5,10 +5,10 @@
     <section class="home-section kenbarn vegas-container">
       <div class="vegas-overlay"></div>
       <div class="carousel-container">
-        <div class="carousel-slide" 
-             v-for="(slide, index) in carouselSlides" 
+        <div class="carousel-slide"
+             v-for="(slide, index) in carouselSlides"
              :key="index"
-             :style="{ 
+             :style="{
                backgroundImage: `url(${slide.image})`,
                opacity: currentSlide === index ? 1 : 0
              }">
@@ -22,9 +22,9 @@
               <div class="trace-input-container">
                 <h2 class="trace-title">农产品溯源查询</h2>
                 <div class="trace-input-box">
-                  <el-input 
-                    v-model="traceCode" 
-                    placeholder="请输入溯源码" 
+                  <el-input
+                    v-model="traceCode"
+                    placeholder="请输入溯源码"
                     class="trace-input"
                     size="large"
                     clearable
@@ -33,9 +33,9 @@
                       <i class="el-icon-search"></i>
                     </template>
                   </el-input>
-                  <el-button 
-                    type="primary" 
-                    @click="searchTrace" 
+                  <el-button
+                    type="primary"
+                    @click="searchTrace"
                     :loading="loading"
                     size="large"
                     class="trace-button">
@@ -63,7 +63,7 @@
             <span>专注农产品一物一码领域</span>
             <p></p>
           </li>
-          
+
           <li>
             <h5>
               <span class="counter" data-numto="16">5</span>
@@ -72,16 +72,7 @@
             <span>年生码数量</span>
             <p></p>
           </li>
-          
-<!--           <li>
-            <h5>
-              <span class="counter" data-numto="27">27</span>
-              <span class="span-two">项</span>
-            </h5>
-            <span>软件著作与专利</span>
-            <p></p>
-          </li> -->
-          
+
           <li>
             <h5>
               <span class="counter" data-numto="2000">2,000</span>
@@ -90,6 +81,14 @@
             <span>服务品牌超市</span>
             <p></p>
           </li>
+          <li @click="navigateToShop" style="cursor: pointer;">
+            <h5>
+              <span class="counter">商城</span>
+            </h5>
+            <span>点击了解详情</span>
+            <p></p>
+          </li>
+
         </ul>
       </div>
     </div>
@@ -101,26 +100,26 @@
         <p class="desc m-b-0 font-weight-500 animation-fade appear-no-repeat">Product Advantages</p>
         <div class="maintitle">
           <ul class="blocks-xs-4 blocks-md-4 blocks-lg-4 blocks-xxl-4 index-service-list">
-            <li class="animation-slide-bottom50 appear-no-repeat" 
-                :class="{ cur: activeTab === 0 }" 
+            <li class="animation-slide-bottom50 appear-no-repeat"
+                :class="{ cur: activeTab === 0 }"
                 @mouseover="activeTab = 0">
               <i class="el-icon-document" aria-hidden="true"></i>
               <h3 class="font-weight-300">全程溯源</h3>
             </li>
-            <li class="animation-slide-bottom50 appear-no-repeat" 
-                :class="{ cur: activeTab === 1 }" 
+            <li class="animation-slide-bottom50 appear-no-repeat"
+                :class="{ cur: activeTab === 1 }"
                 @mouseover="activeTab = 1">
               <i class="el-icon-box" aria-hidden="true"></i>
               <h3 class="font-weight-300">智链营销</h3>
             </li>
-            <li class="animation-slide-bottom50 appear-no-repeat" 
-                :class="{ cur: activeTab === 2 }" 
+            <li class="animation-slide-bottom50 appear-no-repeat"
+                :class="{ cur: activeTab === 2 }"
                 @mouseover="activeTab = 2">
               <i class="el-icon-setting" aria-hidden="true"></i>
               <h3 class="font-weight-300">产线智造</h3>
             </li>
-            <li class="animation-slide-bottom50 appear-no-repeat" 
-                :class="{ cur: activeTab === 3 }" 
+            <li class="animation-slide-bottom50 appear-no-repeat"
+                :class="{ cur: activeTab === 3 }"
                 @mouseover="activeTab = 3">
               <i class="el-icon-service" aria-hidden="true"></i>
               <h3 class="font-weight-300">码联售后</h3>
@@ -237,7 +236,10 @@ const chatBotPosition = computed(() => {
     bottom: `${window.innerHeight - position.y + 60}px`
   }
 })
-
+const navigateToShop = () => {
+  // 导航到商品页面
+  router.push('/shop');
+}
 // 切换ChatBot显示状态
 const toggleChatBot = () => {
   showChatBot.value = !showChatBot.value
@@ -345,12 +347,13 @@ const initParticlesAndCounters = () => {
   // 初始化计数器
   const counters = document.querySelectorAll('.counter');
   counters.forEach(counter => {
+    if (counter.textContent.trim() === '商城') return;
     const target = parseInt(counter.getAttribute('data-numto'), 10);
     const duration = 2000; // 2秒内完成计数
     const start = 0;
     const increment = Math.ceil(target / (duration / 20)); // 每20ms增加的数值
     let current = start;
-    
+
     const updateCounter = () => {
       current += increment;
       if (current >= target) {
@@ -360,7 +363,7 @@ const initParticlesAndCounters = () => {
         counter.textContent = current;
       }
     };
-    
+
     const timer = setInterval(updateCounter, 20);
   });
 };
@@ -415,7 +418,7 @@ const searchTrace = async () => {
   try {
     // 查询销售信息
      const saleRes = await axios.get(`/traceability/saleinfo/${traceCode.value}`)
-    
+
     // 开发测试阶段，自定义一个res数据，方便测试
 /*     const saleRes = {
       data: {
@@ -432,14 +435,14 @@ const searchTrace = async () => {
         }
       }
     } */
-    
+
     if (saleRes.data && saleRes.data.data) {
       // 将销售信息存储到localStorage
       localStorage.setItem('saleInfo', JSON.stringify(saleRes.data.data))
-      
+
       // 获取物流信息
        const logisticsRes = await axios.get(`/traceability/logistics/${saleRes.data.data.logisticsId}`)
-      
+
       // 测试数据 - 物流信息
 /*       const logisticsRes = {
         data: {
@@ -462,10 +465,10 @@ const searchTrace = async () => {
       if (logisticsRes.data && logisticsRes.data.data) {
         // 将物流信息存储到localStorage
         localStorage.setItem('logisticsInfo', JSON.stringify(logisticsRes.data.data))
-        
+
         // 获取生产信息
          const productionRes = await axios.get(`/traceability/productinfo/${logisticsRes.data.data.productInfoId}`)
-        
+
         // 测试数据 - 生产信息
 /*         const productionRes = {
           data: {
@@ -484,14 +487,14 @@ const searchTrace = async () => {
             }
           }
         } */
-        
+
         if (productionRes.data && productionRes.data.data) {
           // 将生产信息存储到localStorage
           localStorage.setItem('productionInfo', JSON.stringify(productionRes.data.data))
-          
+
           // 获取产品信息
            const productRes = await axios.get(`/traceability/product/${productionRes.data.data.productId}`)
-          
+
           // 测试数据 - 产品信息
 /*           const productRes = {
             data: {
@@ -504,11 +507,11 @@ const searchTrace = async () => {
               }
             }
           } */
-          
+
           if (productRes.data && productRes.data.data) {
             // 将产品信息存储到localStorage
             localStorage.setItem('productInfo', JSON.stringify(productRes.data.data))
-            
+
             // 跳转到产品页面
             router.push(`/product/${productRes.data.data.pdId}`)
           } else {
@@ -1165,11 +1168,11 @@ const stopDrag = () => {
     flex: 0 0 45%;
     margin-bottom: 20px;
   }
-  
+
   .countup_met_36_1_52 .counter {
     font-size: 40px;
   }
-  
+
   .countup_met_36_1_52 .span-two {
     font-size: 20px;
   }

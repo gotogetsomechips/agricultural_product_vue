@@ -36,7 +36,7 @@
                 <button
                   class="search-button"
                   @click="handleSearch"
-                  style="margin-left: 680px"
+                  style="margin-left: 20px"
                 >
                   查询
                 </button>
@@ -361,7 +361,7 @@ export default {
             },
           }
         );
-        if (response.data.code === 1) {
+        if (response.data.code === 200) {
           productInfo.value = response.data.data.records || [];
           if (response.data.data.length > 0) {
             item.value.pdName = response.data.data[0].pdName;
@@ -447,7 +447,7 @@ export default {
             Authorization: token,
           },
         });
-        if (response.data.code === 1) {
+        if (response.data.code === 200) {
           productInfo.value = response.data.data;
           if (response.data.data.length > 0) {
             item.value.pdName = response.data.data[0].pdName;
@@ -460,7 +460,7 @@ export default {
             currentProduct.value.image = response.data.data[0].image;
           }
         } else {
-          alert(response.data.msg);
+
         }
       } catch (error) {
         console.error("查询失败:", error);
@@ -499,7 +499,7 @@ export default {
             },
           }
         );
-        if (uploadResponse.data.code === 1) {
+        if (uploadResponse.data.code === 200) {
           uploadMessage.value = uploadResponse.data.data;
 
           try {
@@ -517,7 +517,7 @@ export default {
                 },
               }
             );
-            if (response.data.code === 1) {
+            if (response.data.code === 200) {
               //handleSearch();
               showAllProduct();
               hideAdd();
@@ -572,7 +572,7 @@ export default {
               },
             }
           );
-          if (uploadResponse.data.code === 1) {
+          if (uploadResponse.data.code === 200) {
             uploadMessage.value = uploadResponse.data.data;
             try {
               const response = await axios.put(
@@ -590,7 +590,7 @@ export default {
                   },
                 }
               );
-              if (response.data.code === 1) {
+              if (response.data.code === 200) {
                 // 刷新数据列表（可根据实际情况调整，这里类似添加成功后的操作）
                 showAllProduct();
                 hideEdit();
@@ -628,7 +628,7 @@ export default {
               },
             }
           );
-          if (response.data.code === 1) {
+          if (response.data.code === 200) {
             showAllProduct();
             hideEdit();
             alert("修改成功");
@@ -655,7 +655,7 @@ export default {
               },
             }
           );
-          if (response.data.code === 1) {
+          if (response.data.code === 200) {
             alert("删除成功");
             showAllProduct();
             //handleSearch();

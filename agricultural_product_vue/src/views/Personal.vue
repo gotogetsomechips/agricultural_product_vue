@@ -1,7 +1,8 @@
 <template>
   <div class="personal-info-container">
     <h2 class="personal-info-title">个人信息</h2>
-    <div class="info-wrapper">
+    <div v-if="loading" class="loading-spinner">加载中...</div>
+    <div v-else class="info-wrapper">
       <div class="info-item">
         <label>用户名:</label>
         <div class="info-content">
@@ -12,56 +13,59 @@
       <div class="info-item">
         <label>性别：</label>
         <div class="info-content">
-          <div v-if="isEditing">
+          <div v-if="isEditing" class="radio-group">
             <input
-              type="radio"
-              id="male"
-              v-model="personalInfo.gender"
-              value="男"
-            />男
+                type="radio"
+                id="male"
+                v-model="personalInfo.gender"
+                value="男"
+            />
+            <label for="male">男</label>
             <input
-              type="radio"
-              id="female"
-              v-model="personalInfo.gender"
-              value="女"
-            />女
+                type="radio"
+                id="female"
+                v-model="personalInfo.gender"
+                value="女"
+            />
+            <label for="female">女</label>
           </div>
-          <span v-else>{{ personalInfo.gender }}</span>
+          <span v-else>{{ personalInfo.gender || '未设置' }}</span>
         </div>
       </div>
       <div class="info-item">
         <label>昵称：</label>
         <div class="info-content">
           <input v-if="isEditing" v-model="personalInfo.name" type="text" />
-          <span v-else>{{ personalInfo.name }}</span>
+          <span v-else>{{ personalInfo.name || '未设置' }}</span>
         </div>
       </div>
       <div class="info-item">
         <label>手机号：</label>
         <div class="info-content">
           <input v-if="isEditing" v-model="personalInfo.phone" type="text" />
-          <span v-else>{{ personalInfo.phone }}</span>
+          <span v-else>{{ personalInfo.phone || '未设置' }}</span>
         </div>
       </div>
     </div>
     <div class="button-group">
-      <button @click="editInfo" class="primary-button">编辑</button>
-      <button @click="saveInfo" class="success-button" v-if="isEditing">
-        保存
-      </button>
+      <button v-if="!isEditing" @click="editInfo" class="primary-button">编辑</button>
+      <template v-else>
+        <button @click="saveInfo" class="success-button">保存</button>
+        <button @click="cancelEdit" class="cancel-button">取消</button>
+      </template>
       <a
-        href="#"
-        @click="showChangePasswordModal = true"
-        class="change-password-link"
-        >修改密码?</a
+          href="#"
+          @click.prevent="showChangePasswordModal = true"
+          class="change-password-link"
+      >修改密码</a
       >
     </div>
 
     <!-- 修改密码模态框 -->
     <div
-      v-if="showChangePasswordModal"
-      class="modal-overlay"
-      @click="hideChangePasswordModal"
+        v-if="showChangePasswordModal"
+        class="modal-overlay"
+        @click="hideChangePasswordModal"
     >
       <div class="modal" @click.stop>
         <div class="modal-content">
@@ -79,13 +83,16 @@
             <div class="form-group">
               <label for="newPassword">新密码:</label>
               <input type="password" id="newPassword" v-model="newPassword" />
+              <small class="password-hint">
+                密码长度为6-16位，必须包含至少一个数字、一个大写字母和一个小写字母
+              </small>
             </div>
             <div class="form-group">
               <label for="confirmPassword">确认新密码:</label>
               <input
-                type="password"
-                id="confirmPassword"
-                v-model="confirmPassword"
+                  type="password"
+                  id="confirmPassword"
+                  v-model="confirmPassword"
               />
             </div>
           </div>
@@ -98,11 +105,16 @@
         </div>
       </div>
     </div>
+
+    <!-- 提示窗口 -->
+    <div v-if="notification.show" class="notification" :class="notification.type">
+      {{ notification.message }}
+    </div>
   </div>
 </template>
 
 <script>
-import { ref, onMounted } from "vue";
+import { ref, reactive, onMounted } from "vue";
 import axios from "axios";
 
 export default {
@@ -114,138 +126,193 @@ export default {
       name: "",
       phone: "",
     });
+
+    const backupInfo = ref({});
     const isEditing = ref(false);
+    const loading = ref(true);
     const showChangePasswordModal = ref(false);
     const oldPassword = ref("");
     const newPassword = ref("");
     const confirmPassword = ref("");
     const token = localStorage.getItem("token");
+    const notification = reactive({
+      show: false,
+      message: "",
+      type: "success"
+    });
+
+    // 创建axios实例，设置默认请求头
+    const api = axios.create({
+      baseURL: "http://localhost:8080",
+      headers: {
+        Authorization: token ? `Bearer ${token}` : "",
+      },
+    });
+
+    // 显示通知
+    const showNotification = (message, type = "success") => {
+      notification.show = true;
+      notification.message = message;
+      notification.type = type;
+
+      // 3秒后自动隐藏通知
+      setTimeout(() => {
+        notification.show = false;
+      }, 3000);
+    };
 
     onMounted(() => {
+      if (!token) {
+        showNotification("未登录，请先登录", "error");
+        // 可以在这里添加重定向到登录页面的逻辑
+        setTimeout(() => {
+          window.location.href = "/login";
+        }, 2000);
+        return;
+      }
       getUserInfo();
     });
 
     const getUserInfo = async () => {
+      loading.value = true;
       try {
-        const response = await axios.get(
-          "http://localhost:8080/user/userInfo",
-          {
-            headers: {
-              Authorization: token,
-            },
-          }
-        );
-        if (response.data.code === 1) {
+        const response = await api.get("/user/userInfo");
+        if (response.data.code === 200) {
           personalInfo.value = {
             id: response.data.data.id,
             username: response.data.data.username,
-            gender: response.data.data.sex,
-            name: response.data.data.name,
-            phone: response.data.data.phone,
+            gender: response.data.data.sex && response.data.data.sex.Valid ? response.data.data.sex.String : "",
+            name: response.data.data.name && response.data.data.name.Valid ? response.data.data.name.String : "",
+            phone: response.data.data.phone && response.data.data.phone.Valid ? response.data.data.phone.String : "",
           };
+          // 保存原始数据用于取消编辑
+          backupInfo.value = {...personalInfo.value};
         } else {
-          alert(response.data.msg);
+          showNotification(response.data.msg || "获取信息失败", "error");
         }
       } catch (error) {
         console.error("查询失败:", error);
-        alert("查询失败，请稍后重试");
+        if (error.response && error.response.status === 401) {
+          showNotification("登录已过期，请重新登录", "error");
+          setTimeout(() => {
+            localStorage.removeItem("token");
+            window.location.href = "/login";
+          }, 2000);
+        } else {
+          showNotification("查询失败，请稍后重试", "error");
+        }
+      } finally {
+        loading.value = false;
       }
     };
 
     const editInfo = () => {
       isEditing.value = true;
+      // 备份当前数据，用于取消编辑时恢复
+      backupInfo.value = { ...personalInfo.value };
+    };
+
+    const cancelEdit = () => {
+      // 恢复原始数据
+      personalInfo.value = { ...backupInfo.value };
+      isEditing.value = false;
     };
 
     const saveInfo = async () => {
       if (!personalInfo.value.username) {
-        alert("用户名不能为空");
+        showNotification("用户名不能为空", "error");
         return;
       }
+
       try {
-        const response = await axios.put(
-          "http://localhost:8080/user/update",
-          {
-            id: personalInfo.value.id,
-            username: personalInfo.value.username,
-            sex: personalInfo.value.gender,
-            name: personalInfo.value.name,
-            phone: personalInfo.value.phone,
-          },
-          {
-            headers: {
-              Authorization: token,
-            },
-          }
-        );
-        if (response.data.code === 1) {
+        const response = await api.put("/user/update", {
+          id: personalInfo.value.id,
+          username: personalInfo.value.username,
+          sex: personalInfo.value.gender,
+          name: personalInfo.value.name,
+          phone: personalInfo.value.phone,
+        });
+
+        if (response.data.code === 200) {
           isEditing.value = false;
-          getUserInfo();
-          alert("信息更改成功");
+          getUserInfo(); // 重新获取最新数据
+          showNotification("信息更改成功");
         } else {
-          alert(response.data.msg);
+          showNotification(response.data.msg || "更新失败", "error");
         }
       } catch (error) {
         console.error("更改失败:", error);
-        alert("更改失败，请稍后重试");
+        showNotification("更改失败，请稍后重试", "error");
       }
     };
 
     const hideChangePasswordModal = () => {
       showChangePasswordModal.value = false;
+      // 清空密码字段
+      oldPassword.value = "";
+      newPassword.value = "";
+      confirmPassword.value = "";
+    };
+
+    const validatePassword = (password) => {
+      // 验证密码是否符合规则：6-16位，包含至少一个数字、一个大写字母和一个小写字母
+      const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{6,16}$/;
+      return regex.test(password);
     };
 
     const changePassword = async () => {
+      // 前端验证
       if (!oldPassword.value || !newPassword.value || !confirmPassword.value) {
-        alert("请填写完整的信息！");
+        showNotification("请填写完整的密码信息", "error");
         return;
       }
-      if (newPassword.value.length < 6|| newPassword.value.length > 16||confirmPassword.value.length < 6||confirmPassword.value.length > 16) {
-        alert("新密码长度应为6-16位！");
+
+      if (newPassword.value.length < 6 || newPassword.value.length > 16) {
+        showNotification("新密码长度应为6-16位", "error");
         return;
       }
-      const regex=/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{2,16}$/;
-      if (!regex.test(newPassword.value)||!regex.test(confirmPassword.value)) {
-        alert("新密码必须包含至少一个数字、一个大写字母和一个小写字母");
+
+      if (!validatePassword(newPassword.value)) {
+        showNotification("新密码必须包含至少一个数字、一个大写字母和一个小写字母", "error");
         return;
       }
+
       if (newPassword.value !== confirmPassword.value) {
-        alert("新密码和确认密码不一致");
+        showNotification("新密码和确认密码不一致", "error");
         return;
       }
+
       try {
-        const response = await axios.put(
-          "http://localhost:8080/user/editPassword",
-          {
-            oldPassword: oldPassword.value,
-            newPassword: newPassword.value,
-            confirmPassword: confirmPassword.value,
-          },
-          {
-            headers: {
-              Authorization: token,
-            },
-          }
-        );
-        if (response.data.code === 1) {
-          alert("密码修改成功");
+        const response = await api.put("/user/editPassword", {
+          oldPassword: oldPassword.value,
+          newPassword: newPassword.value,
+          confirmPassword: confirmPassword.value,
+        });
+
+        if (response.data.code === 200) {
+          showNotification("密码修改成功");
           hideChangePasswordModal();
         } else {
-          alert(response.data.msg);
+          showNotification(response.data.msg || "密码修改失败", "error");
         }
       } catch (error) {
-        console.error("更改失败:", error);
+        console.error("密码修改失败:", error);
+        showNotification("密码修改失败，请稍后重试", "error");
       }
     };
 
     return {
       personalInfo,
       isEditing,
+      loading,
       showChangePasswordModal,
       oldPassword,
       newPassword,
       confirmPassword,
+      notification,
       editInfo,
       saveInfo,
+      cancelEdit,
       hideChangePasswordModal,
       changePassword,
     };
@@ -254,7 +321,7 @@ export default {
 </script>
 
 <style scoped>
-/* 新增背景渐变 */
+/* 背景渐变 */
 body {
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
   min-height: 100vh;
@@ -268,10 +335,8 @@ body {
   min-width: 800px;
   min-height: 550px;
   margin: auto;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  position: relative;
+  top: 50px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -283,11 +348,11 @@ body {
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translate(-50%, -55%);
+    transform: translateY(-10px);
   }
   to {
     opacity: 1;
-    transform: translate(-50%, -50%);
+    transform: translateY(0);
   }
 }
 
@@ -318,6 +383,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 25px;
+  width: 100%;
 }
 
 .info-item {
@@ -364,23 +430,27 @@ body {
   box-shadow: 0 0 0 3px rgba(243, 156, 18, 0.1);
 }
 
-/* 新增单选框样式 */
+/* 单选框样式 */
+.radio-group {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
 .info-content input[type="radio"] {
   width: 16px;
   height: 16px;
-  margin: 0 8px 0 0;
+  margin: 0;
   cursor: pointer;
 }
 
 .info-content input[type="radio"] + label {
-  margin-right: 20px;
   font-size: 16px;
   color: #4a5568;
   cursor: pointer;
-}
-
-.info-content input[type="radio"]:checked + label {
-  color: #f39c12;
+  margin-right: 20px;
+  width: auto;
+  text-align: left;
 }
 
 .button-group {
@@ -388,11 +458,12 @@ body {
   justify-content: space-between;
   align-items: center;
   margin-top: 30px;
+  padding: 0 20px;
 }
 
-.primary-button, .success-button {
+.primary-button, .success-button, .cancel-button {
   border: none;
-  padding: 15px 30px;
+  padding: 12px 28px;
   border-radius: 12px;
   cursor: pointer;
   font-size: 18px;
@@ -411,9 +482,28 @@ body {
   color: white;
 }
 
-.primary-button:hover, .success-button:hover {
+.cancel-button {
+  background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+  color: white;
+  margin-left: 10px;
+}
+
+.primary-button:hover, .success-button:hover, .cancel-button:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.change-password-link {
+  color: #3498db;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  margin-left: auto;
+}
+
+.change-password-link:hover {
+  color: #2980b9;
+  text-decoration: underline;
 }
 
 .modal-overlay {
@@ -426,8 +516,8 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000; /* 确保模态框位于最顶层 */
-  backdrop-filter: blur(5px); /* 新增模糊效果 */
+  z-index: 1000;
+  backdrop-filter: blur(5px);
 }
 
 .modal {
@@ -437,9 +527,9 @@ body {
   width: 500px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
   animation: slideIn 0.3s ease-out;
-  z-index: 1001; /* 确保模态框内容位于最顶层 */
-  border: 1px solid rgba(255, 255, 255, 0.3); /* 新增边框 */
-  backdrop-filter: blur(10px); /* 新增模糊效果 */
+  z-index: 1001;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(10px);
 }
 
 @keyframes slideIn {
@@ -505,6 +595,13 @@ body {
   box-shadow: 0 0 0 3px rgba(0, 166, 90, 0.1);
 }
 
+.password-hint {
+  display: block;
+  color: #718096;
+  font-size: 12px;
+  margin-top: 5px;
+}
+
 .modal-footer {
   display: flex;
   justify-content: flex-end;
@@ -535,5 +632,57 @@ body {
 .save-button:hover, .back-button:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* 加载动画 */
+.loading-spinner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  font-size: 20px;
+  color: #f39c12;
+}
+
+/* 通知样式 */
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 15px 25px;
+  border-radius: 8px;
+  color: white;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 2000;
+  animation: slideInRight 0.3s ease-out, fadeOut 0.3s ease-in 2.7s forwards;
+}
+
+.notification.success {
+  background-color: #00a65a;
+}
+
+.notification.error {
+  background-color: #e74c3c;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
 }
 </style>
