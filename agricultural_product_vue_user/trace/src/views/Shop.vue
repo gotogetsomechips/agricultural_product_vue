@@ -2,139 +2,163 @@
   <div class="shop-container">
     <h1 class="shop-title">AgriCareMall</h1>
 
+    <div class="category-buttons">
+      <button
+          v-for="option in productTypeOptions"
+          :key="option"
+          @click="filterByType(option)"
+          :class="{ 'active': selectedType === option }"
+      >
+        {{ option }}
+      </button>
+      <button @click="clearFilter" :class="{ 'active': selectedType === '' }">
+        全部商品
+      </button>
+    </div>
+
     <div class="product-container">
-      <div v-for="(product, index) in products" :key="index" class="product" @click="viewProductDetail(product)">
-        <img :src="product.image" :alt="product.name">
+      <div v-for="product in paginatedProducts" :key="product.pdId" class="product" @click="viewProductDetail(product)">
+        <img :src="product.image" :alt="product.pdName" @error="handleImageError">
         <div class="product-info">
-          <h3>{{ product.name }}</h3>
-          <p>{{ product.price }}</p>
+          <h3>{{ product.pdName }}</h3>
+          <p>￥{{ product.unitPrice.toFixed(2) }}</p>
         </div>
       </div>
+    </div>
+
+    <div class="pagination" v-if="filteredProducts.length > pageSize">
+      <button @click="prevPage" :disabled="currentPage === 1">上一页</button>
+      <span>第 {{ currentPage }} 页 / 共 {{ pageCount }} 页</span>
+      <button @click="nextPage" :disabled="currentPage === pageCount">下一页</button>
     </div>
   </div>
 </template>
 
-<script setup>
-import { ref, onMounted } from 'vue';
+<script>
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import axios from 'axios';
 
-const router = useRouter();
+export default {
+  setup() {
+    const router = useRouter();
+    const token = localStorage.getItem("token");
 
-// 商品数据
-const products = ref([
-  {
-    id: 1,
-    name: 'iPhone15',
-    price: '￥5999',
-    image: new URL('../statics/products/iPhoneblue.jpg', import.meta.url).href,
-    link: '/product/iphone15'
-  },
-  {
-    id: 2,
-    name: 'iPhone15 Plus',
-    price: '￥6999',
-    image: new URL('../statics/products/iPhoneblue.jpg', import.meta.url).href,
-    link: '/product/iphone15plus'
-  },
-  {
-    id: 3,
-    name: 'iPhone15 Pro',
-    price: '￥7999',
-    image: new URL('../statics/products/iPhone.jpg', import.meta.url).href,
-    link: '/product/iphone15pro'
-  },
-  {
-    id: 4,
-    name: 'iPhone15 Pro Max',
-    price: '￥9999',
-    image: new URL('../statics/products/iPhone.jpg', import.meta.url).href,
-    link: '/product/iphone15promax'
-  },
-  {
-    id: 5,
-    name: 'MacBook Pro 14英寸',
-    price: '￥12999',
-    image: new URL('../statics/products/gray1.jpg', import.meta.url).href,
-    link: '/product/macbook14'
-  },
-  {
-    id: 6,
-    name: 'MacBook Pro 16英寸',
-    price: '￥19999',
-    image: new URL('../statics/products/16gray1.jpg', import.meta.url).href,
-    link: '/product/macbook16'
-  },
-  {
-    id: 7,
-    name: 'HUAWEI Mate60 Pro',
-    price: '￥7999',
-    image: new URL('../statics/products/mate60black.png', import.meta.url).href,
-    link: '/product/mate60'
-  },
-  {
-    id: 8,
-    name: 'Apple Watch Series 9',
-    price: '￥2999',
-    image: new URL('../statics/products/awpink1.jpg', import.meta.url).href,
-    link: '/product/aws9'
-  },
-  {
-    id: 9,
-    name: '王硕(狂笑之蝠)',
-    price: '￥-5',
-    image: new URL('../statics/products/ws.jpg', import.meta.url).href,
-    link: '/video/ws.mp4',
-    isVideo: true
-  },
-  {
-    id: 10,
-    name: '王宇、强子(元歌)',
-    price: '￥-10',
-    image: new URL('../statics/products/wz.jpg', import.meta.url).href,
-    link: '/video/wz.mp4',
-    isVideo: true
-  },
-  {
-    id: 11,
-    name: '闫海龙(圣枪游侠)',
-    price: '￥-5',
-    image: new URL('../statics/products/yhl2.jpg', import.meta.url).href,
-    link: '/video/yhl.mp4',
-    isVideo: true
-  },
-  {
-    id: 12,
-    name: '闫海龙(冰雪王子)',
-    price: '￥-5',
-    image: new URL('../statics/products/yhl3.jpg', import.meta.url).href,
-    link: '/video/yhl1.mp4',
-    isVideo: true
-  }
-]);
+    // 商品数据和分页
+    const productInfo = ref([]);
+    const currentPage = ref(1);
+    const pageSize = 12; // 固定每页12条数据
+    const selectedType = ref('');
 
-// 查看商品详情
-const viewProductDetail = (product) => {
-  if (product.isVideo) {
-    // 如果是视频，可以考虑在新窗口打开
-    window.open(product.link, '_blank');
-  } else {
-    // 如果是普通商品，导航到商品详情页
-    router.push(product.link);
+    // 产品类型选项
+    const productTypeOptions = ref([
+      "水果",
+      "蔬菜",
+      "鲜花",
+      "肉类",
+      "奶制品",
+      "其他",
+    ]);
+
+    // 图片加载失败处理
+    const handleImageError = (event) => {
+      event.target.src = 'https://via.placeholder.com/200x200?text=Product+Image';
+    };
+
+    // 根据类型筛选商品
+    const filteredProducts = computed(() => {
+      if (!selectedType.value) {
+        return productInfo.value;
+      }
+      return productInfo.value.filter(product => product.type === selectedType.value);
+    });
+
+    // 计算总页数
+    const pageCount = computed(() => {
+      return Math.ceil(filteredProducts.value.length / pageSize);
+    });
+
+    // 当前页面显示的商品
+    const paginatedProducts = computed(() => {
+      const start = (currentPage.value - 1) * pageSize;
+      const end = start + pageSize;
+      return filteredProducts.value.slice(start, end);
+    });
+
+    // 加载所有商品
+    const loadAllProducts = async () => {
+      try {
+        const response = await axios.get("http://localhost:8080/product/list", {
+          headers: {
+            Authorization: token,
+          },
+        });
+
+        if (response.data.code === 200) {
+          productInfo.value = response.data.data;
+        } else {
+          console.error("获取产品列表失败:", response.data.msg);
+        }
+      } catch (error) {
+        console.error("获取产品列表失败:", error);
+      }
+    };
+
+    // 根据类型筛选商品
+    const filterByType = (type) => {
+      selectedType.value = type;
+      currentPage.value = 1; // 重置到第一页
+    };
+
+    // 清除筛选
+    const clearFilter = () => {
+      selectedType.value = '';
+      currentPage.value = 1; // 重置到第一页
+    };
+
+    // 上一页
+    const prevPage = () => {
+      if (currentPage.value > 1) {
+        currentPage.value--;
+      }
+    };
+
+    // 下一页
+    const nextPage = () => {
+      if (currentPage.value < pageCount.value) {
+        currentPage.value++;
+      }
+    };
+
+    // 查看商品详情
+    const viewProductDetail = (product) => {
+      router.push(`/product/${product.pdId}`);
+    };
+
+    // 页面加载时获取所有产品
+    onMounted(() => {
+      loadAllProducts();
+    });
+
+    return {
+      productInfo,
+      productTypeOptions,
+      currentPage,
+      pageSize,
+      pageCount,
+      selectedType,
+      filteredProducts,
+      paginatedProducts,
+      loadAllProducts,
+      filterByType,
+      clearFilter,
+      prevPage,
+      nextPage,
+      viewProductDetail,
+      handleImageError
+    };
   }
 };
-
-onMounted(() => {
-  // 页面挂载后的初始化逻辑
-  console.log('商城页面已加载');
-
-  // 可以在这里添加动画效果初始化
-  const productElements = document.querySelectorAll('.product');
-  productElements.forEach((product, index) => {
-    setTimeout(() => {
-      product.classList.add('visible');
-    }, index * 100);
-  });
-});
 </script>
 
 <style scoped>
@@ -149,6 +173,33 @@ onMounted(() => {
   margin-bottom: 30px;
   color: #333;
   font-size: 28px;
+}
+
+.category-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.category-buttons button {
+  padding: 8px 16px;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  background-color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.category-buttons button:hover {
+  background-color: #f0f0f0;
+}
+
+.category-buttons button.active {
+  background-color: #4CAF50;
+  color: white;
+  border-color: #4CAF50;
 }
 
 .product-container {
@@ -167,11 +218,6 @@ onMounted(() => {
   transition: transform 0.3s ease-in-out, opacity 0.5s ease;
   margin-bottom: 20px;
   cursor: pointer;
-  opacity: 0;
-}
-
-.product.visible {
-  opacity: 1;
 }
 
 .product:hover {
@@ -195,6 +241,9 @@ onMounted(() => {
   margin: 0;
   font-size: 1.2em;
   color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .product-info p {
@@ -202,6 +251,31 @@ onMounted(() => {
   font-size: 1em;
   color: #e44d26;
   font-weight: bold;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  margin-top: 30px;
+}
+
+.pagination button {
+  padding: 8px 16px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
+  cursor: pointer;
+}
+
+.pagination button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination button:not(:disabled):hover {
+  background-color: #f0f0f0;
 }
 
 /* 响应式设计 */
@@ -220,6 +294,19 @@ onMounted(() => {
 @media (max-width: 480px) {
   .product {
     width: 100%;
+  }
+
+  .category-buttons {
+    gap: 5px;
+  }
+
+  .category-buttons button {
+    padding: 6px 12px;
+    font-size: 0.9em;
+  }
+
+  .product-info h3 {
+    font-size: 1em;
   }
 }
 </style>

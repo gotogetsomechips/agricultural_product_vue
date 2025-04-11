@@ -48,12 +48,13 @@
           <!-- 表格部分 -->
           <table>
             <thead>
-              <tr>
-                <th>序号</th>
-                <th>产品名称</th>
-                <th>产品类型</th>
-                <th>操作</th>
-              </tr>
+            <tr>
+              <th>序号</th>
+              <th>产品名称</th>
+              <th>产品类型</th>
+              <th>单价</th>
+              <th>操作</th>
+            </tr>
             </thead>
             <tbody>
               <tr
@@ -64,6 +65,7 @@
                 <td>{{ (currentPage - 1) * pageSize + index + 1 }}</td>
                 <td>{{ item.pdName }}</td>
                 <td>{{ item.type }}</td>
+                <td>{{ item.unitPrice }}</td>
                 <td class="action-buttons">
                   <button class="detail-button" @click="showDetail(item)">
                     详情
@@ -172,6 +174,17 @@
           </div>
           <br />
           <div class="form-group input-group">
+            <label for="newUnitPrice">单价: </label>
+            <input
+                type="number"
+                id="newUnitPrice"
+                v-model="newProduct.unitPrice"
+                step="0.01"
+                min="0"
+            />
+          </div>
+          <br />
+          <div class="form-group input-group">
             <label for="newDescription">描述: </label>
             <textarea
               id="newDescription"
@@ -267,6 +280,17 @@
           </div>
           <br />
           <div class="form-group input-group">
+            <label for="unitPrice">单价: </label>
+            <input
+                type="number"
+                id="unitPrice"
+                v-model="currentProduct.unitPrice"
+                step="0.01"
+                min="0"
+            />
+          </div>
+          <br />
+          <div class="form-group input-group">
             <label for="description">描述: </label>
             <textarea
               id="description"
@@ -309,6 +333,7 @@ export default {
       type: "",
       pdDescription: "",
       image: "",
+      unitPrice: 0
     });
     const productTypeOptions = ref([
       "水果",
@@ -421,6 +446,7 @@ export default {
       type: "",
       pdDescription: "",
       image: "",
+      unitPrice: 0
     });
 
     const showAdd = () => {
@@ -480,6 +506,7 @@ export default {
       selectedFile.value = event.target.files[0];
       alert("图片上传成功");
     };
+
     const addProduct = async () => {
       if (!selectedFile.value) {
         uploadMessage.value = "请选择图片";
@@ -489,36 +516,35 @@ export default {
       const formData = new FormData();
       formData.append("file", selectedFile.value);
       try {
-        // 先上传图片，获取图片路径
         const uploadResponse = await axios.post(
-          "http://localhost:8080/upload",
-          formData,
-          {
-            headers: {
-              Authorization: token,
-            },
-          }
+            "http://localhost:8080/upload",
+            formData,
+            {
+              headers: {
+                Authorization: token,
+              },
+            }
         );
         if (uploadResponse.data.code === 200) {
           uploadMessage.value = uploadResponse.data.data;
 
           try {
             const response = await axios.post(
-              "http://localhost:8080/product",
-              {
-                pdName: newProduct.value.pdName,
-                type: newProduct.value.type,
-                pdDescription: newProduct.value.pdDescription,
-                image: uploadMessage.value,
-              },
-              {
-                headers: {
-                  Authorization: token,
+                "http://localhost:8080/product",
+                {
+                  pdName: newProduct.value.pdName,
+                  type: newProduct.value.type,
+                  pdDescription: newProduct.value.pdDescription,
+                  image: uploadMessage.value,
+                  unitPrice: newProduct.value.unitPrice
                 },
-              }
+                {
+                  headers: {
+                    Authorization: token,
+                  },
+                }
             );
             if (response.data.code === 200) {
-              //handleSearch();
               showAllProduct();
               hideAdd();
               selectedFile.value = null;
@@ -557,41 +583,39 @@ export default {
     };
 
     const saveChanges = async () => {
-      // 检查是否选择了新图片
       if (selectedFile.value) {
         const formData = new FormData();
         formData.append("file", selectedFile.value);
         try {
-          // 先上传图片，获取图片路径
           const uploadResponse = await axios.post(
-            "http://localhost:8080/upload",
-            formData,
-            {
-              headers: {
-                Authorization: token,
-              },
-            }
+              "http://localhost:8080/upload",
+              formData,
+              {
+                headers: {
+                  Authorization: token,
+                },
+              }
           );
           if (uploadResponse.data.code === 200) {
             uploadMessage.value = uploadResponse.data.data;
             try {
               const response = await axios.put(
-                "http://localhost:8080/product",
-                {
-                  pdId: currentProduct.value.pdId,
-                  pdName: currentProduct.value.pdName,
-                  type: currentProduct.value.type,
-                  pdDescription: currentProduct.value.pdDescription,
-                  image: uploadMessage.value,
-                },
-                {
-                  headers: {
-                    Authorization: token,
+                  "http://localhost:8080/product",
+                  {
+                    pdId: currentProduct.value.pdId,
+                    pdName: currentProduct.value.pdName,
+                    type: currentProduct.value.type,
+                    pdDescription: currentProduct.value.pdDescription,
+                    image: uploadMessage.value,
+                    unitPrice: currentProduct.value.unitPrice
                   },
-                }
+                  {
+                    headers: {
+                      Authorization: token,
+                    },
+                  }
               );
               if (response.data.code === 200) {
-                // 刷新数据列表（可根据实际情况调整，这里类似添加成功后的操作）
                 showAllProduct();
                 hideEdit();
                 selectedFile.value = null;
@@ -611,22 +635,22 @@ export default {
           alert("上传图片失败，请稍后重试");
         }
       } else {
-        // 如果没有选择新图片，直接更新其他字段
         try {
           const response = await axios.put(
-            "http://localhost:8080/product",
-            {
-              pdId: currentProduct.value.pdId,
-              pdName: currentProduct.value.pdName,
-              type: currentProduct.value.type,
-              pdDescription: currentProduct.value.pdDescription,
-              image: currentProduct.value.image,
-            },
-            {
-              headers: {
-                Authorization: token,
+              "http://localhost:8080/product",
+              {
+                pdId: currentProduct.value.pdId,
+                pdName: currentProduct.value.pdName,
+                type: currentProduct.value.type,
+                pdDescription: currentProduct.value.pdDescription,
+                image: currentProduct.value.image,
+                unitPrice: currentProduct.value.unitPrice
               },
-            }
+              {
+                headers: {
+                  Authorization: token,
+                },
+              }
           );
           if (response.data.code === 200) {
             showAllProduct();
