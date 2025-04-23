@@ -567,10 +567,10 @@ const initChart = () => {
 const fetchSaleData = () => {
   try {
     loading.value = true
-    
+
     // 从localStorage获取数据
     const storedSaleInfo = localStorage.getItem('saleInfo')
-    
+
     if (storedSaleInfo) {
       saleInfo.value = JSON.parse(storedSaleInfo)
     }

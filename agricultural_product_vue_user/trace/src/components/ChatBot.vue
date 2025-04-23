@@ -33,7 +33,7 @@
           autofocus
       >
       <button @click="sendMessage" :disabled="isLoading">
-        <img src="https://foruda.gitee.com/images/1743989281478283055/f2c06f4b_13047841.png">
+        <img src="../statics/submit.png">
       </button>
     </div>
   </div>

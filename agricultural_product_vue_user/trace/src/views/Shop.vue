@@ -1,13 +1,26 @@
 <template>
   <div class="shop-container">
+    <!-- 右上角登录、用户信息和购物车按钮 -->
+    <div class="top-right-buttons">
+      <div v-if="!isLoggedIn">
+        <button @click="goToLogin">登录</button>
+      </div>
+      <div v-else>
+        <span>欢迎，{{ userInfo.username }}</span>
+        <button @click="handleLogout">退出账号</button>
+      </div>
+      <button @click="goToCart">购物车</button>
+      <!-- 添加返回主页按钮 -->
+      <button @click="goToHome">返回主页</button>
+    </div>
     <h1 class="shop-title">AgriCareMall</h1>
 
     <div class="category-buttons">
       <button
-          v-for="option in productTypeOptions"
-          :key="option"
-          @click="filterByType(option)"
-          :class="{ 'active': selectedType === option }"
+        v-for="option in productTypeOptions"
+        :key="option"
+        @click="filterByType(option)"
+        :class="{ 'active': selectedType === option }"
       >
         {{ option }}
       </button>
@@ -35,7 +48,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
 
@@ -43,11 +56,15 @@ export default {
   setup() {
     const router = useRouter();
     const token = localStorage.getItem("token");
+    const isLoggedIn = ref(!!token);
+    const userInfo = ref({
+      username: localStorage.getItem("username") || ""
+    });
 
     // 商品数据和分页
     const productInfo = ref([]);
     const currentPage = ref(1);
-    const pageSize = 12; // 固定每页12条数据
+    const pageSize = 12; 
     const selectedType = ref('');
 
     // 产品类型选项
@@ -107,40 +124,101 @@ export default {
     // 根据类型筛选商品
     const filterByType = (type) => {
       selectedType.value = type;
-      currentPage.value = 1; // 重置到第一页
+      currentPage.value = 1; 
     };
 
     // 清除筛选
     const clearFilter = () => {
       selectedType.value = '';
-      currentPage.value = 1; // 重置到第一页
+      currentPage.value = 1; 
     };
 
     // 上一页
     const prevPage = () => {
       if (currentPage.value > 1) {
-        currentPage.value--;
+      currentPage.value--;
       }
     };
 
     // 下一页
     const nextPage = () => {
       if (currentPage.value < pageCount.value) {
-        currentPage.value++;
+      currentPage.value++;
       }
     };
 
     // 查看商品详情
     const viewProductDetail = (product) => {
-      router.push(`/product/${product.pdId}`);
+      router.push(`/productinfo/${product.pdId}`);
     };
 
-    // 页面加载时获取所有产品
+    // 跳转到登录页面
+    const goToLogin = () => {
+      router.push('/login');
+    };
+
+    // 跳转到购物车页面
+    const goToCart = () => {
+      router.push('/cart');
+    };
+
+    // 退出账号
+    const handleLogout = () => {
+      localStorage.removeItem("token");
+      localStorage.removeItem("username");
+      isLoggedIn.value = false;
+      userInfo.value = {};
+      // 重定向到Shop页面
+      router.push('/Shop'); 
+    };
+
+    // 获取用户信息的方法
+    const fetchUserInfo = async () => {
+      try {
+        const response = await axios.get("http://localhost:8080/user/userInfo", {
+          headers: {
+            Authorization: token,
+          },
+        });
+
+        if (response.data.code === 200) {
+          userInfo.value = response.data.data;
+          localStorage.setItem("userInfo", JSON.stringify(response.data.data));
+        } else {
+          console.error("获取用户信息失败:", response.data.msg);
+        }
+      } catch (error) {
+        console.error("获取用户信息失败:", error);
+      }
+    };
+
+    // 跳转到主页的方法
+    const goToHome = () => {
+      router.push('/');
+    };
+
+    // 页面加载时获取所有产品和用户信息
     onMounted(() => {
       loadAllProducts();
+      if (isLoggedIn.value) {
+        fetchUserInfo();
+      }
+    });
+
+    // 监听 token 的变化，更新登录状态和用户信息
+    watch(() => localStorage.getItem("token"), (newToken) => {
+      isLoggedIn.value = !!newToken;
+      if (isLoggedIn.value) {
+        fetchUserInfo();
+      } else {
+        userInfo.value = {};
+        localStorage.removeItem("username");
+      }
     });
 
     return {
+      isLoggedIn,
+      userInfo,
       productInfo,
       productTypeOptions,
       currentPage,
@@ -155,17 +233,23 @@ export default {
       prevPage,
       nextPage,
       viewProductDetail,
-      handleImageError
+      handleImageError,
+      goToLogin,
+      goToCart,
+      handleLogout,
+      goToHome
     };
   }
 };
 </script>
 
 <style scoped>
+/* 样式部分保持不变 */
 .shop-container {
   padding: 20px;
   background-color: #f4f4f4;
   min-height: 100vh;
+  position: relative;
 }
 
 .shop-title {
@@ -173,6 +257,15 @@ export default {
   margin-bottom: 30px;
   color: #333;
   font-size: 28px;
+}
+
+.top-right-buttons {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .category-buttons {
@@ -280,32 +373,32 @@ export default {
 
 /* 响应式设计 */
 @media (max-width: 1200px) {
-  .product {
+ .product {
     width: calc(33.33% - 20px);
   }
 }
 
 @media (max-width: 768px) {
-  .product {
+ .product {
     width: calc(50% - 15px);
   }
 }
 
 @media (max-width: 480px) {
-  .product {
+ .product {
     width: 100%;
   }
 
-  .category-buttons {
+ .category-buttons {
     gap: 5px;
   }
 
-  .category-buttons button {
+ .category-buttons button {
     padding: 6px 12px;
     font-size: 0.9em;
   }
 
-  .product-info h3 {
+ .product-info h3 {
     font-size: 1em;
   }
 }
